@@ -93,7 +93,7 @@ to eat-grass
   ask turtles [
     if pcolor = green [
       set pcolor black
-      set energy energy + 1
+      set energy energy + energy-from-grass
     ]
     ifelse show-energy?
     [ set label energy]
@@ -105,9 +105,9 @@ end
 ; adding procedure to reproduce
 to reproduce
   ask turtles [
-    if energy > 50 [
-      set energy energy - 50
-      hatch 1 [set energy 50]
+    if energy > birth-energy [
+      set energy energy - birth-energy
+      hatch 1 [set energy birth-energy]
     ]
   ]
 end
@@ -169,10 +169,10 @@ ticks
 30.0
 
 BUTTON
-63
-104
-129
-137
+10
+123
+76
+156
 NIL
 setup
 NIL
@@ -186,10 +186,10 @@ NIL
 1
 
 BUTTON
-89
-173
-152
-206
+98
+126
+161
+159
 NIL
 go
 T
@@ -203,10 +203,10 @@ NIL
 0
 
 MONITOR
-722
-54
-815
-99
+935
+23
+1028
+68
 NIL
 count turtles
 17
@@ -214,10 +214,10 @@ count turtles
 11
 
 MONITOR
-880
-78
-1115
-123
+677
+22
+912
+67
 green patches
 count patches with [pcolor = green]
 17
@@ -225,10 +225,10 @@ count patches with [pcolor = green]
 11
 
 SWITCH
-769
-203
-913
-236
+18
+361
+162
+394
 show-energy?
 show-energy?
 1
@@ -236,10 +236,10 @@ show-energy?
 -1000
 
 PLOT
-720
-347
-1133
-582
+669
+85
+1082
+320
 Totals
 tim
 totals
@@ -255,45 +255,45 @@ PENS
 "grass" 1.0 0 -13840069 true "" "plot count patches with [pcolor = green]"
 
 SLIDER
-1030
-216
-1202
-249
+6
+201
+178
+234
 number
 number
 0
 100
-4.0
+100.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-1090
-294
-1264
-327
+6
+248
+180
+281
 energy-from-grass
 energy-from-grass
 1
 20
-10.0
+2.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-875
-312
-1047
-345
+9
+299
+181
+332
 birth-energy
 birth-energy
 1
 100
-50.0
+6.0
 1
 1
 NIL
@@ -302,31 +302,40 @@ HORIZONTAL
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+This model creates agents that then move around the patch, eat, reproduce, and die. There is also a random chance that the agents are made smaller or larger. This model was developed as practice, and serves or furthers no research or other academic purpose.  
 
 ## HOW IT WORKS
 
-(what rules the agents use to create the overall behavior of the model)
+Every tick the agents rotate a radom number of degrees to the right, and then advance 1 space. This costs the agents 1 energy. Agents can eat grass (if available) every tick. Eating grass gives the agent a pre-selected amount of energy. If an agent reaches a pre-selected amount of energy, it may have a child. This produces another agent, gives that agent the pre-selected amount of energy, and reduces the parent agent's energy by that pre-selected amount. If any agent reaches 0 energy (after moving, eating, and reproducing), it dies. 
+
+When grass is eaten it turns to dirt and becomes brown. Every turn thereafter, it has a 3% chance of growing back as grass, that the agents can then eat. 
+
+Every turn there every agent has a 1% chance of becoming 5 times larger than the normal agent in size, and a 1% chance of becoming half the size of a normal agent in size. Every turn every agent turns a random color. This is just for fun.
 
 ## HOW TO USE IT
 
-(how to use the model, including a description of each of the items in the Interface tab)
+The amount of agents at the start of the simulation, the amount of energy agents gain from eating grass, and the amount of energy for reproduction is all configurable using the "number", "energy-from-grass", and "birth-energy" sliders on the Interface tab.
+
+Pressing the setup button will generate the selected number of agents and set all the patches to grass. You must press the setup button prior to starting the simulation. 
+
+Pressing the go button will start the simulation. Agents will begin to move, eat, reproduce, die, grow, and shrink. Ticks will also being to advance. The simulation will continue to run until  turned off, or until tick 500 is reached.
 
 ## THINGS TO NOTICE
 
-(suggested things for the user to notice while running the model)
+Notice how the agents move around in a random direction, randomly changing sizes, and switching to a random color. It really is a delight to watch. 
+
+You may also notice how groups of agents seem to form, especially when starting with a low number of agents. Its interesting how groups form even in this almost completely random environment.
 
 ## THINGS TO TRY
 
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
+Play around with the different sliders for number of initial agents, energy from grass, and reproduction energy. See how these different factors affect the amount of agents that the simulation ends up creating. 
 
 ## EXTENDING THE MODEL
 
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
+The possibilities are endless! The model is very simple, and whimsical now. More whimsical features could be added, for example maybe a procedure that randomly teleports agents, or gives them a new shape. Or procedures could be added to attempt actually model something. For example, perhaps a predator is added to feast on the agents. 
 
 ## NETLOGO FEATURES
 
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
 
 ## RELATED MODELS
 
