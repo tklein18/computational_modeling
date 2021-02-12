@@ -1,136 +1,85 @@
-; defining variables ====================================================================
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; creating variables ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; giving turtles energy
-turtles-own [energy]
-
-
-
-
-
+globals[
+  num-clusters
+]
 
 
+turtles-own[
+  time-since-last-found
+]
 
-; defining procedures ======================================================================
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; creating procedures ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+; defining setup
 
-; defining set up button
 to setup
-  clear-all
-  setup-patches
-  setup-turtles
+
+  ca
+
+
+  set num-clusters 8
+
+  ask n-of num-clusters patches[
+    ask n-of 10 patches in-radius 3 [
+      set pcolor red
+    ]
+  ] ;; selects 4 random patches, then selects 20 patches that are within 5 patches of the 4 random patches, and turns them red
+
+  crt 1[
+    setxy min-pxcor min-pycor
+    set size 2
+    set color yellow
+    set time-since-last-found 999
+    set heading 45
+    pen-down
+  ] ;; creates two yellow turtles of size 2. turtles are assumed to have not found a mushroom for 999 time units
+
   reset-ticks
+
 end
 
 
-; defining the go button
+
+; defining go
+
 to go
-  if ticks >= 500 [stop]
-  move-turtles
-  eat-grass
-  reproduce
-  check-death
-  regrow-grass
-  change-turtle-color
-  make-random-bigger
-  make-random-smaller
+
   tick
+
+  ask turtles [search]
+
 end
 
 
-; defining the move-turtles procedure
-to move-turtles
-  ask turtles [
-    right random 360
-    forward 1
-    set energy energy - 1
+
+
+; defining search
+
+to search
+  ifelse time-since-last-found <= 20 [
+    right (random 181) - 90
+  ] ;; if the time since the last mushroom was found is less than 21, the turtles turns randomly between -90 and 90 degrees
+  [
+    right (random 91) - 45
+  ] ;; if the time since last mushroom was greater than 20, the agent turn a random angle between -10 and 10
+
+  forward 1
+
+  ifelse pcolor = red [
+    set time-since-last-found 0
+    set pcolor yellow
+    print "I found one!"
+  ]
+  [
+    set time-since-last-found time-since-last-found + 1
   ]
 end
-
-
-; defining a procedure that randomly changes turtle color
-to change-turtle-color
-  ask turtles [
-    set color random 150
-  ]
-end
-
-
-
-; creating a procedure that selects lucky turtle to make bigger
-to make-random-bigger
-  ask turtles [
-    if random 100 = 1 [set size 5]
-  ]
-end
-
-
-
-; defining a procedure that makes unfortunate turtles smaller
-to make-random-smaller
-  ask turtles [
-    if random 100 = 1 [set size .5]
-  ]
-end
-
-
-; defining setup-patches procedure
-to setup-patches
-  ask patches [ set pcolor green ]
-end
-
-
-
-; defining setup-turtles procedure
-to setup-turtles
-  create-turtles number
-  ask turtles [ setxy random-xcor random-ycor ]
-end
-
-
-; adding eat grass procedure
-to eat-grass
-  ask turtles [
-    if pcolor = green [
-      set pcolor black
-      set energy energy + energy-from-grass
-    ]
-    ifelse show-energy?
-    [ set label energy]
-    [set label ""]
-  ]
-end
-
-
-; adding procedure to reproduce
-to reproduce
-  ask turtles [
-    if energy > birth-energy [
-      set energy energy - birth-energy
-      hatch 1 [set energy birth-energy]
-    ]
-  ]
-end
-
-
-; adding procedure to check-death
-to check-death
-  ask turtles [
-    if energy <= 0 [die]
-  ]
-end
-
-
-; adding procedure for grass to re-grow
-to regrow-grass
-  ask patches[
-    if random 100 < 3 [set pcolor green]
-  ]
-end
-
-
-
-
 
 
 
@@ -161,17 +110,17 @@ GRAPHICS-WINDOW
 16
 -16
 16
-1
-1
+0
+0
 1
 ticks
 30.0
 
 BUTTON
-10
-123
-76
-156
+35
+88
+101
+121
 NIL
 setup
 NIL
@@ -185,10 +134,10 @@ NIL
 1
 
 BUTTON
-98
-126
-161
-159
+123
+89
+186
+122
 NIL
 go
 T
@@ -199,152 +148,48 @@ NIL
 NIL
 NIL
 NIL
-0
-
-MONITOR
-935
-23
-1028
-68
-NIL
-count turtles
-17
 1
-11
-
-MONITOR
-677
-22
-912
-67
-green patches
-count patches with [pcolor = green]
-17
-1
-11
-
-SWITCH
-18
-361
-162
-394
-show-energy?
-show-energy?
-1
-1
--1000
-
-PLOT
-669
-85
-1082
-320
-Totals
-tim
-totals
-0.0
-10.0
-0.0
-10.0
-true
-true
-"" ""
-PENS
-"turtles" 1.0 0 -2139308 true "" "plot count turtles"
-"grass" 1.0 0 -13840069 true "" "plot count patches with [pcolor = green]"
-
-SLIDER
-6
-201
-178
-234
-number
-number
-0
-100
-100.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-6
-248
-180
-281
-energy-from-grass
-energy-from-grass
-1
-20
-2.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-9
-299
-181
-332
-birth-energy
-birth-energy
-1
-100
-6.0
-1
-1
-NIL
-HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model creates agents that then move around the patch, eat, reproduce, and die. There is also a random chance that the agents are made smaller or larger. This model was developed as practice, and serves or furthers no research or other academic purpose.  
+This model creates eight clusters of mushrooms. It also generates one turtle, which moves randomly throughout the world seeking the mushrooms. When the turtle finds a mushroom, it consumes it, and continue moving. The mushrooms do not grow back.
 
 ## HOW IT WORKS
 
-Every tick the agents rotate a radom number of degrees to the right, and then advance 1 space. This costs the agents 1 energy. Agents can eat grass (if available) every tick. Eating grass gives the agent a chosen amount of energy. If an agent reaches a chosen amount of energy, it may have a child. This produces another agent, gives that agent the chosen amount of energy, and reduces the parent agent's energy by that chosen amount. If any agent reaches 0 energy (after moving, eating, and reproducing), it dies. 
+The the eight clusters of mushrooms are randomly selected. Eight patches are randomly chosen as the center of the cluster, and then 10 patches that are within 3 units the center are chosen for each center. The patches that are mushrooms are red in color. 
 
-When grass is eaten it turns to dirt and becomes brown. Every turn thereafter, it has a 3% chance of growing back as grass, that the agents can then eat. 
+One turtle is created at the start. It always begin in the lower left cornder of the world, and faces a 45 degrees. The turtle moves differently based on the amount of time since it found its last mushroom. If the turtle has found a mushroom within the last 20 time units, then at the beginning of the turn the turtle turns between -90 and 90 degrees and then moves forward 1 space. If the turtle has not found a mushroom within 20 turns, then it turns between -45 and 45 degrees before moving forward 1 space. 
 
-Every turn there every agent has a 1% chance of becoming 5 times larger than the normal agent in size, and a 1% chance of becoming half the size of a normal agent in size. Every turn every agent turns a random color. This is just for fun.
+When the turtle finds a mushroom, it turns the mushroom yellow. It then stays that color. 
 
 ## HOW TO USE IT
 
-The amount of agents at the start of the simulation, the amount of energy agents gain from eating grass, and the amount of energy for reproduction is all configurable using the "number", "energy-from-grass", and "birth-energy" sliders on the Interface tab.
-
-Pressing the setup button will generate the selected number of agents and set all the patches to grass. You must press the setup button prior to starting the simulation. 
-
-Pressing the go button will start the simulation. Agents will begin to move, eat, reproduce, die, grow, and shrink. Ticks will also being to advance. The simulation will continue to run until  turned off, or until tick 500 is reached.
+Clicking the setup button will create the clusters of mushrooms and the two turtles. Clicking the go button will send the turtles searching for mushrooms. This will continue until go is clicked again.
 
 ## THINGS TO NOTICE
 
-Notice how the agents move around in a random direction, randomly changing sizes, and switching to a random color. It really is a delight to watch. 
-
-You may also notice how groups of agents seem to form, especially when starting with a low number of agents. Its interesting how groups form even in this almost completely random environment.
+This model was created as practice. 
 
 ## THINGS TO TRY
 
-Play around with the different sliders for number of initial agents, energy from grass, and reproduction energy. See how these different factors affect the amount of agents that the simulation ends up creating. 
+Try making the model more realistic by creating a mechanism for the mushrooms to grow back, for the turtles to reproduce, for the turtles to die, or maybe even for the turtles to compete with one another.
 
 ## EXTENDING THE MODEL
 
-The possibilities are endless! The model is currently very simple, and whimsical. More whimsical features could be added, for example maybe a procedure that randomly teleports agents, or gives them a new shape. Or procedures could be added that attempt to actually model something. For example, perhaps a predator is added to feast on the agents. 
+Please see the "Things to try" section.
 
 ## NETLOGO FEATURES
 
-N/A
+
 
 ## RELATED MODELS
 
-N/A
+
 
 ## CREDITS AND REFERENCES
 
-This model was developed while following tutorial 3 on the NetLogo homepage (link below).
-http://ccl.northwestern.edu/netlogo/docs/
+
 @#$#@#$#@
 default
 true
