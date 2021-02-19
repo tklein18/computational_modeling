@@ -1,112 +1,101 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; creating variables ;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;
+;; variables ;;;;
+;;;;;;;;;;;;;;;;
 
-globals[
-  num-clusters
+globals [
+  q  ; probability that a butterfly moves directly to the highest surrounding patch
 ]
 
-
-turtles-own[
-  time-since-last-found
+patches-own [
+  elevation
 ]
 
+turtles-own []
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; creating procedures ;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; defining setup
+;;;;;;;;;;;;;;;;;;;
+;; procedures ;;;;;
+;;;;;;;;;;;;;;;;;;
+
+
+;;
+;;setup
+;;
 
 to setup
-
   ca
 
+  ; assign an elevation to patches and the color the patches by it
+  ask patches [
+    ; elevation is a sine function of X, Y coordinates, with maximum value of 400 when sine is 1
+    set elevation 200 + (100 * (sin (pxcor * 3.8)
+    + sin (pycor * 3.8)))
+    set pcolor scale-color green elevation 0 400
+  ] ; end of ask patches
 
-  set num-clusters 4
-
-  ask n-of num-clusters patches[
-    ask n-of 20 patches in-radius 5 [
-      set pcolor red
-    ]
-  ] ;; selects 4 random patches, then selects 20 patches that are within 5 patches of the 4 random patches, and turns them red
-
-  crt 2[
+  ; creates butterflies
+  crt 500
+  [
     set size 2
-    set color yellow
-    set time-since-last-found 999
+    setxy random-pxcor random-pycor ; set initial location to random patch
     pen-down
-  ] ;; creates two yellow turtles of size 2. turtles are assumed to have not found a mushroom for 999 time units
+  ]
+
+  ; initialize q parameter
+  ; q of 1 sends the butterflies straight up the hills
+  ; while q of 0 sends butterflies continuously moving around the map
+  set q 0
 
   reset-ticks
-
-end
-
+end ; end of setup procedure
 
 
-; defining go
+;;
+;; go
+;;
 
-to go
+to go ; this is the master schedule
+  ask turtles [move]
 
   tick
 
-  ask turtles [search]
-
+  if ticks >= 1000 [stop]
 end
 
 
+;;
+;; move
+;; a turtle procedure
 
-
-; defining search
-
-to search
-  ifelse time-since-last-found <= 20 [
-    right (random 181) - 90
-  ] ;; if the time since the last mushroom was found is less than 21, the turtles turns randomly between -90 and 90 degrees
-  [
-    right (random 21) - 10
-  ] ;; if the time since last mushroom was greater than 20, the agent turn a random angle between -10 and 10
-
-  forward 1
-
-  ifelse pcolor = red [
-    set time-since-last-found 0
-    set pcolor yellow
-  ]
-  [
-    set time-since-last-found time-since-last-found + 1
-  ]
-end
-
-
-
-
-
-
-
-
+to move ; butterfly move procedure
+        ; decide whether to move to the highest
+        ; surrounding patch with probability q
+  ifelse random-float 1.0 < q
+  [ uphill elevation ] ; move deterministically uphill
+  [ move-to one-of neighbors ] ; or move randomly
+end ; end of move procedure
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-647
-448
+818
+619
 -1
 -1
-13.0
+4.0
 1
 10
 1
 1
 1
 0
+0
+0
 1
-1
-1
--16
-16
--16
-16
+0
+149
+0
+149
 0
 0
 1
@@ -114,10 +103,10 @@ ticks
 30.0
 
 BUTTON
-35
-88
-101
-121
+45
+50
+111
+83
 NIL
 setup
 NIL
@@ -131,10 +120,10 @@ NIL
 1
 
 BUTTON
-123
-89
-186
-122
+126
+52
+189
+85
 NIL
 go
 T
@@ -148,45 +137,44 @@ NIL
 1
 
 @#$#@#$#@
-## WHAT IS IT?
+# Butterfly Model ODD Description
+This file describes the model of Pe’er et al. (2005). The description is taken from Section 3.4 of Railsback and Grimm (2012). The file uses the markup language used by NetLogo's Info tab starting with NetLogo version 5.0.
 
-This model creates four clusters of mushrooms. It also generates two turtles, which move randomly throughout the world seeking the mushrooms. When the turtles find a mushroom, they consume it, and continue moving. The mushrooms do not grow back.
+## Purpose
+The model was designed to explore questions about virtual corridors. Under what conditions do the interactions of butterfly hilltopping behavior and landscape topography lead to the emergence of virtual corridors, that is, relatively narrow paths along which many butterflies move? How does variability in the butterflies’ tendency to move uphill affect the emergence of virtual corridors?
 
-## HOW IT WORKS
+## Entities, State Variables, and Scales
+The model has two kinds of entities: butterflies and square patches of land. The patches make up a square grid landscape of 150 × 150 patches, and each patch has one state variable: its elevation. Butterflies are characterized only by their location, described as the patch they are on. Therefore, butterfly locations are in discrete units, the x- and y- coordinates of the center of their patch. Patch size and the length of one time step in the simulation are not specified because the model is generic, but when real landscapes are used, a patch corresponds to 25 × 25 m<sup>2</sup>. Simulations last for 1000 time steps; the length of one time step is not specified but should be about the time it takes a butterfly to move 25–35 m (the distance from one cell to one of its neighbor cells).
 
-The the four clusters of mushrooms are randomly selected. Four patches are randomly chosen as the center of the cluster, and then 20 patches that are within 5 units the center are chosen for each center. The patches that are mushrooms are red in color. 
+## Process Overview and Scheduling
+There is only one process in the model: movement of the butterflies. On each time step, each butterfly moves once. The order in which the butterflies execute this action is unimportant because there are no interactions among the butterflies.
 
-Two turtles are created at the start. They always begin in the center of the world, and face a random direction. The turtles move differently based on the amount of time since they found their last mushroom. If a turtle has found a mushroom within the last 20 time units, then at the beginning of every turn the turtles turns between -90 and 90 degrees and then moves forward 1 space. If the turtles has not found a mushroom within 20 turns, then it turns between -10 and 10 degrees before moving forward 1 space. 
+## Design Concepts
+The _basic principle_ addressed by this model is the concept of virtual corridors—pathways used by many individuals when there is nothing particularly beneficial about the habitat in them. This concept is addressed by seeing when corridors _emerge_ from two parts of the model: the adaptive movement behavior of butterflies and the landscape they move through. This _adaptive behavior_ is modeled via a simple empirical rule that reproduces the behavior observed in real butterflies: moving uphill. This behavior is based on the understanding (not included in the model) that moving uphill leads to mating, which conveys fitness (success at passing on genes, the presumed ultimate objective of organisms). Because the hilltopping behavior is assumed a priori to be the objective of the butterflies, the concepts of _Objectives_ and _Prediction_ are not explicitly considered. There is no _learning_ in the model.
 
-When turtles find a mushroom, they turn the mushroom yellow. It then stays that color. 
+_Sensing_ is important in this model: butterflies are assumed able to identify which of the surrounding patches has the highest elevation, but to use no information about elevation at further distances. (The field studies of Pe’er 2003 addressed this question of how far butterflies sense elevation differences.)
 
-## HOW TO USE IT
+The model does not include _interaction_ among butterflies; in field studies, Pe’er (2003) found that real butterflies do interact (they sometimes stop to visit each other on the way uphill) but decided it is not important to include interaction in a model of virtual corridors.
 
-Clicking the setup button will create the clusters of mushrooms and the two turtles. Clicking the go button will send the turtles searching for mushrooms. This will continue until go is clicked again.
+_Stochasticity_ is used to represent two sources of variability in movement that are too complex to represent mechanistically. Real butterflies do not always move directly uphill, likely because of (1) limits in the ability of the butterflies to sense the highest area in their neighborhood, and (2) factors other than topography (e.g., flowers that need investigation along the way) that influence movement direction. This variability is represented by assuming butterflies do not move uphill every time step; sometimes they move randomly instead. Whether a butterfly moves directly uphill or randomly at any time step is modeled stochastically, using a parameter _q_ that is the probability of an individual moving directly uphillinstead of randomly.
 
-## THINGS TO NOTICE
+To allow _observation_ of virtual corridors, we will define a specific “corridor width” measure that characterizes the width of a butterfly’s path from its starting patch to a hilltop.
 
-This model was created as practice. 
+## Initialization
+The topography of the landscape (the elevation of each patch) is initialized when the model starts. Two kinds of landscapes are used in different versions of the model: (1) a simple artificial topography, and (2) the topography of a real study site, imported from a file containing elevation values for each patch. The butterflies are initialized by creating five hundred of them and setting their initial location to a single patch or small region.
 
-## THINGS TO TRY
+## Input Data
+The environment is assumed to be constant, so the model has no input data.
 
-Try making the model more realistic by creating a mechanism for the mushrooms to grow back, for the turtles to reproduce, for the turtles to die, or maybe even for the turtles to comp
-
-## EXTENDING THE MODEL
-
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
-
-## NETLOGO FEATURES
-
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
-
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
+## Submodels
+The movement submodel defines exactly how butterflies decide whether to move uphill or randomly. First, to “move uphill” is defined specifically as moving to the neighbor patch that has the highest elevation; if two patches have the same elevation, one is chosen randomly. “Move randomly” is defined as moving to one of the neighboring patches, with equal probability of choosing any patch. “Neighbor patches” are the eight patches surrounding the butterfly’s current patch. The decision of whether to move uphill or randomly is controlled by the parameter _q_, which ranges from 0.0 to 1.0 (_q_ is a global variable: all butterflies use the same value). On each time step, each butterfly draws a random number from a uniform distribution between 0.0 and 1.0. If this random number is less than _q_, the butterfly moves uphill; otherwise, the butterfly moves randomly.
 
 ## CREDITS AND REFERENCES
+Pe’er, G., Saltz, D. & Frank, K. 2005. Virtual corridors for conservation management. _Conservation Biology_, 19, 1997–2003.
 
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+Pe’er, G. 2003. Spatial and behavioral determinants of butterfly movement patterns in topographically complex landscapes. Ph.D. thesis, Ben-Gurion University of the Negev.
+
+Railsback, S. & Grimm, V. 2012. _Agent-based and individual-based modeling: A practical introduction_. Princeton University Press, Princeton, NJ.
 @#$#@#$#@
 default
 true
