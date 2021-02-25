@@ -3,14 +3,17 @@
 ;;;;;;;;;;;;;;;;
 
 globals [
-  q  ; probability that a butterfly moves directly to the highest surrounding patch
+  ;q  ; probability that a butterfly moves directly to the highest surrounding patch
 ]
 
 patches-own [
   elevation
+  used? ; this will start false, and be switched to true if any butterfly steps on the patch
 ]
 
-turtles-own []
+turtles-own [
+  start-patch ; this will hold the turtles starting patch so that they can calculate their distance
+]
 
 
 ;;;;;;;;;;;;;;;;;;;
@@ -30,7 +33,10 @@ to setup
     ; elevation is a sine function of X, Y coordinates, with maximum value of 400 when sine is 1
     set elevation 200 + (100 * (sin (pxcor * 3.8)
     + sin (pycor * 3.8)))
+    ; setting color to be a scale of the possible elevations
     set pcolor scale-color green elevation 0 400
+    ; setting used? to false
+    set used? FALSE
   ] ; end of ask patches
 
   ; creates butterflies
@@ -39,10 +45,9 @@ to setup
     set size 2
     setxy random-pxcor random-pycor ; set initial location to random patch
     pen-down
+    set start-patch patch-here
   ]
 
-  ; initialize q parameter
-  set q 0.4
 
   reset-ticks
 end ; end of setup procedure
@@ -55,9 +60,18 @@ end ; end of setup procedure
 to go ; this is the master schedule
   ask turtles [move]
 
+  set-current-plot "Corridor Width"
+  create-temporary-plot-pen "Width"
+  plot corridor-width
+
   tick
 
-  if ticks >= 1000 [stop]
+  if ticks >= 1000 [
+    output-type "Corridor width: " output-print corridor-width
+    export-plot "Corridor Width"
+      (word "Corridor-output-for-q-" selected_q_value ".csv")
+    stop
+  ]
 end
 
 
@@ -66,13 +80,50 @@ end
 ;; a turtle procedure
 
 to move ; butterfly move procedure
-        ; decide whether t
-  ifelse random-float 1.0 < q
+        ; decide whether to move to the highest
+        ; surrounding patch with probability q
+  ifelse random-float 1.0 < selected_q_value
+  [ uphill elevation ] ; move deterministically uphill
+  [ move-to one-of neighbors ] ; or move randomly
 
-  [ uphill elevation ]
+  ; butterfly will also ask the patch that it is on to switch used? to true
+  ask patch-here[
+    set used? TRUE
+  ]
 
-  [ move-to one-of neighbors ]
+end ; end of move procedure
+
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;
+;; reports ;;;; -------------------------------------------------------------------
+;;;;;;;;;;;;;;
+
+
+to-report corridor-width
+  let num-patches-used count patches with [used? = TRUE]
+  let mean-distance-traveled mean [distance start-patch] of turtles
+
+ report num-patches-used / mean-distance-traveled
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -134,6 +185,45 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+13
+113
+185
+146
+selected_q_value
+selected_q_value
+0
+1
+0.52
+.01
+1
+NIL
+HORIZONTAL
+
+OUTPUT
+682
+29
+922
+83
+13
+
+PLOT
+791
+107
+1160
+365
+Corridor Width
+Tick
+Corridor Width
+0.0
+1000.0
+0.0
+900.0
+true
+false
+"" ""
+PENS
 
 @#$#@#$#@
 # Butterfly Model ODD Description
