@@ -45,7 +45,7 @@ to setup
     set size 2
     setxy random-pxcor random-pycor ; set initial location to random patch
     pen-down
-    set start-patch patch-here
+    set start-patch patch-here ; setting start-patch variable to their patch at setup
   ]
 
 
@@ -60,6 +60,9 @@ end ; end of setup procedure
 to go ; this is the master schedule
   ask turtles [move]
 
+
+  ; plotting instructions
+  ; plots the corridor-width on y axis, tick value on x axis
   set-current-plot "Corridor Width"
   create-temporary-plot-pen "Width"
   plot corridor-width
@@ -69,7 +72,7 @@ to go ; this is the master schedule
   if ticks >= 1000 [
     output-type "Corridor width: " output-print corridor-width
     export-plot "Corridor Width"
-      (word "Corridor-output-for-q-" selected_q_value ".csv")
+      (word "artificial_results/Corridor-output-for-q-" selected_q_value ".csv")
     stop
   ]
 end
@@ -110,8 +113,6 @@ to-report corridor-width
 
  report num-patches-used / mean-distance-traveled
 end
-
-
 
 
 
@@ -195,7 +196,7 @@ selected_q_value
 selected_q_value
 0
 1
-0.52
+1.0
 .01
 1
 NIL
@@ -227,7 +228,7 @@ PENS
 
 @#$#@#$#@
 # Butterfly Model ODD Description
-This file describes the model of Pe’er et al. (2005). The description is taken from Section 3.4 of Railsback and Grimm (2012). The file uses the markup language used by NetLogo's Info tab starting with NetLogo version 5.0.
+This file describes the model of Pe’er et al. (2005). The description is taken from Section 3.4 of Railsback and Grimm (2012). The file uses the markup language used by NetLogo's Info tab starting with NetLogo version 5.0. This model and description were updated to reflect the butterfly model of the artificial landscape in Chapter 5 of Raislback and Grimm (2012). 
 
 ## Purpose
 The model was designed to explore questions about virtual corridors. Under what conditions do the interactions of butterfly hilltopping behavior and landscape topography lead to the emergence of virtual corridors, that is, relatively narrow paths along which many butterflies move? How does variability in the butterflies’ tendency to move uphill affect the emergence of virtual corridors?
@@ -250,7 +251,7 @@ _Stochasticity_ is used to represent two sources of variability in movement that
 To allow _observation_ of virtual corridors, we will define a specific “corridor width” measure that characterizes the width of a butterfly’s path from its starting patch to a hilltop.
 
 ## Initialization
-The topography of the landscape (the elevation of each patch) is initialized when the model starts. Two kinds of landscapes are used in different versions of the model: (1) a simple artificial topography, and (2) the topography of a real study site, imported from a file containing elevation values for each patch. The butterflies are initialized by creating five hundred of them and setting their initial location to a single patch or small region.
+The topography of the landscape (the elevation of each patch) is initialized when the model starts. The landscape used is a simple artificial topography.
 
 ## Input Data
 The environment is assumed to be constant, so the model has no input data.
