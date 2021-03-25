@@ -1,92 +1,81 @@
-globals
-[
-  red-count            ; population of red turtles
-  blue-count           ; population of blue turtles
+globals [
+  percent-similar  ; on the average, what percent of a turtle's neighbors
+                   ; are the same color as that turtle?
+  percent-unhappy  ; what percent of the turtles are unhappy?
 ]
 
-turtles-own
-[
-  fertility            ; the whole number part of fertility
-  fertility-remainder  ; the fractional part (after the decimal point)
+turtles-own [
+  happy?           ; for each turtle, indicates whether at least %-similar-wanted percent of
+                   ;   that turtle's neighbors are the same color as the turtle
+  similar-nearby   ; how many neighboring patches have a turtle with my color?
+  other-nearby     ; how many have a turtle of another color?
+  total-nearby     ; sum of previous two variables
 ]
 
 to setup
-  clear-output
-  setup-experiment
-end
+  clear-all
+  ; create turtles on random patches.
+  ask patches [
 
-to setup-experiment
-  clear-patches
-  clear-turtles
-  clear-all-plots
-  clear-ticks
-  create-turtles carrying-capacity
-  [
-    setxy random-xcor random-ycor         ; randomize turtle locations
-    ifelse who < (carrying-capacity / 2)  ; start out with equal numbers of reds and blues
-      [ set color blue ]
-      [ set color red ]
-    set size 2                            ; easier to see
+    set pcolor white
+    if random 100 < density [   ; set the occupancy density
+      sprout 1 [
+        ; 105 is the color number for "blue"
+        ; 27 is the color number for "orange"
+        set color one-of [105 27]
+        set size 1
+      ]
+    ]
   ]
+  update-turtles
+  update-globals
   reset-ticks
 end
 
+; run the model for one tick
 to go
-  reproduce
-  grim-reaper
+  if all? turtles [ happy? ] [ stop ]
+  move-unhappy-turtles
+  update-turtles
+  update-globals
   tick
 end
 
-;; to enable many repetitions with same settings
-to go-experiment
-  go
-  if red-count = 0
-  [
-    output-print (word "red extinct after " ticks " generations")
-    setup-experiment
-  ]
-  if blue-count = 0
-  [
-    output-print (word "blue extinct after " ticks " generations")
-    setup-experiment
-  ]
+; unhappy turtles try a new spot
+to move-unhappy-turtles
+  ask turtles with [ not happy? ]
+    [ find-new-spot ]
 end
 
-to wander  ;; turtle procedure
-  rt random-float 30 - random-float 30
-  fd 1
+; move until we find an unoccupied spot
+to find-new-spot
+  rt random-float 360
+  fd random-float 10
+  if any? other turtles-here [ find-new-spot ] ; keep going until we find an unoccupied patch
+  move-to patch-here  ; move to center of patch
 end
 
-to reproduce
-  ask turtles
-  [
-    ifelse color = red
-    [
-      set fertility floor red-fertility
-      set fertility-remainder red-fertility - (floor red-fertility)
+to update-turtles
+  ask turtles [
+    ; in next two lines, we use "neighbors" to test the eight patches
+    ; surrounding the current patch
+    set similar-nearby count (turtles-on neighbors)  with [ color = [ color ] of myself ]
+    set other-nearby count (turtles-on neighbors) with [ color != [ color ] of myself ]
+    set total-nearby similar-nearby + other-nearby
+    set happy? similar-nearby >= (%-similar-wanted * total-nearby / 100)
+    ; add visualization here
+    if visualization = "old" [ set shape "default" set size 1.3 ]
+    if visualization = "square-x" [
+      ifelse happy? [ set shape "square" ] [ set shape "X" ]
     ]
-    [
-      set fertility floor blue-fertility
-      set fertility-remainder blue-fertility - (floor blue-fertility)
-    ]
-    ifelse (random-float 100) < (100 * fertility-remainder)
-      [ hatch fertility + 1 [ wander ]]
-      [ hatch fertility     [ wander ]]
   ]
 end
 
-;; kill turtles in excess of carrying capacity
-;; note that reds and blues have equal probability of dying
-to grim-reaper
-  let num-turtles count turtles
-  if num-turtles <= carrying-capacity
-    [ stop ]
-  let chance-to-die (num-turtles - carrying-capacity) / num-turtles
-  ask turtles
-  [
-    if random-float 1.0 < chance-to-die
-      [ die ]
-  ]
+to update-globals
+  let similar-neighbors sum [ similar-nearby ] of turtles
+  let total-neighbors sum [ total-nearby ] of turtles
+  set percent-similar (similar-neighbors / total-neighbors) * 100
+  set percent-unhappy (count turtles with [ not happy? ]) / (count turtles) * 100
 end
 
 
@@ -94,13 +83,13 @@ end
 ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-290
+375
 10
-702
-423
+791
+427
 -1
 -1
-4.0
+8.0
 1
 10
 1
@@ -110,70 +99,93 @@ GRAPHICS-WINDOW
 1
 1
 1
--50
-50
--50
-50
+-25
+25
+-25
+25
 1
 1
 1
 ticks
 30.0
 
-BUTTON
-145
-25
+MONITOR
 265
-58
-run-experiment
-go-experiment
-T
+365
+355
+410
+% unhappy
+percent-unhappy
 1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-0
+1
+11
 
-SLIDER
-15
-65
+MONITOR
 265
-98
-carrying-capacity
-carrying-capacity
+220
+355
+265
+% similar
+percent-similar
 1
-4000
-1000.0
 1
-1
-turtles
-HORIZONTAL
+11
 
-BUTTON
-15
-25
-75
-58
-setup
-setup
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-80
-25
+PLOT
+10
 140
-58
+260
+285
+Percent Similar
+time
+%
+0.0
+5.0
+0.0
+100.0
+true
+false
+"" ""
+PENS
+"percent" 1.0 0 -16777216 true "" "plot percent-similar"
+
+SLIDER
+10
+95
+285
+128
+%-similar-wanted
+%-similar-wanted
+0
+100
+80.0
+1
+1
+%
+HORIZONTAL
+
+BUTTON
+10
+55
+90
+88
+setup
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+200
+55
+285
+88
 go
 go
 T
@@ -186,125 +198,146 @@ NIL
 NIL
 0
 
-SLIDER
-15
-135
-265
-168
-red-fertility
-red-fertility
-0.0
-10.0
-2.0
-0.1
+BUTTON
+100
+55
+190
+88
+go once
+go
+NIL
 1
-children
-HORIZONTAL
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+CHOOSER
+801
+380
+950
+425
+visualization
+visualization
+"old" "square-x"
+1
 
 SLIDER
-15
-100
-265
-133
-blue-fertility
-blue-fertility
-0.0
-10.0
-5.0
-0.1
+10
+10
+285
+43
+density
+density
+50
+99
+95.0
 1
-children
+1
+%
 HORIZONTAL
 
 PLOT
-4
-226
-284
+10
+295
+260
 445
-Populations
-Generations
-Population
+Number-unhappy
+NIL
+NIL
 0.0
-50.0
+10.0
 0.0
-1200.0
+100.0
 true
-true
-"set-plot-y-range 0 floor (carrying-capacity * 1.2)" ""
+false
+"" ""
 PENS
-"Reds" 1.0 0 -2674135 true "" "set red-count count turtles with [ color = red ]\nplot red-count"
-"Blues" 1.0 0 -13345367 true "" "set blue-count count turtles with [ color = blue ]\nplot blue-count"
-"Total" 1.0 0 -10899396 true "" "plot count turtles"
+"default" 1.0 0 -16777216 true "" "plot count turtles with [not happy?]"
 
 MONITOR
-67
-176
-143
-221
-# reds
-red-count
-3
+265
+315
+355
+360
+num-unhappy
+count turtles with [not happy?]
+1
 1
 11
 
 MONITOR
-145
-176
-222
-221
-# blues
-blue-count
-3
+265
+170
+355
+215
+# agents
+count turtles
+1
 1
 11
-
-OUTPUT
-290
-449
-602
-543
-12
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-This is a simple model of population genetics.  There are two populations, the REDS and the BLUES. Each has settable birth rates.  The reds and blues move around and reproduce according to their birth rates.  When the carrying capacity of the terrain is exceeded, some agents die (each agent has the same chance of being selected for death) to maintain a relatively constant population.  The model allows you to explore how differential birth rates affect the ratio of reds to blues.
+This project models the behavior of two types of agents in a neighborhood. The orange agents and blue agents get along with one another. But each agent wants to make sure that it lives near some of "its own." That is, each orange agent wants to live near at least some orange agents, and each blue agent wants to live near at least some blue agents. The simulation shows how these individual preferences ripple through the neighborhood, leading to large-scale patterns.
+
+This project was inspired by Thomas Schelling's writings about social systems (such as housing patterns in cities).
 
 ## HOW TO USE IT
 
-Each pass through the GO function represents a generation in the time scale of this model.
+Click the SETUP button to set up the agents. There are approximately equal numbers of orange and blue agents. The agents are set up so no patch has more than one agent.  Click GO to start the simulation. If agents don't have enough same-color neighbors, they move to a nearby patch. (The topology is wrapping, so that patches on the bottom edge are neighbors with patches on the top and similar for left and right).
 
-The CARRYING-CAPACITY slider sets the carrying capacity of the terrain.  The model is initialized to have a total population of CARRYING-CAPACITY with half the population reds and half blues.
+The DENSITY slider controls the occupancy density of the neighborhood (and thus the total number of agents). (It takes effect the next time you click SETUP.)  The %-SIMILAR-WANTED slider controls the percentage of same-color agents that each agent wants among its neighbors. For example, if the slider is set at 30, each blue agent wants at least 30% of its neighbors to be blue agents.
 
-The RED-FERTILITY and BLUE-FERTILITY sliders sets the average number of children the reds and blues have in a generation.  For example, a fertility of 3.4 means that each parent will have three children minimum, with a 40% chance of having a fourth child.
+The % SIMILAR monitor shows the average percentage of same-color neighbors for each agent. It starts at about 50%, since each agent starts (on average) with an equal number of orange and blue agents as neighbors. The NUM-UNHAPPY monitor shows the number of unhappy agents, and the % UNHAPPY monitor shows the percent of agents that have fewer same-color neighbors than they want (and thus want to move). The % SIMILAR and the NUM-UNHAPPY monitors are also plotted.
 
-The # BLUES and # REDS monitors display the number of reds and blues respectively.
-
-The GO button runs the model.  A running plot is also displayed of the number of reds, blues and total population (in green).
-
-The RUN-EXPERIMENT button lets you experiment with many trials at the same settings.  This button outputs the number of ticks it takes for either the reds or the blues to die out given a particular set of values for the sliders.  After each extinction occurs, the world is cleared and another run begins with the same settings.  This way you can see the variance of the number of generations until extinction.
+The VISUALIZATION chooser gives two options for visualizing the agents. The OLD option uses the visualization that was used by the segregation model in the past. The SQUARE-X option visualizes the agents as squares. Unhappy agents are visualized as Xs.
 
 ## THINGS TO NOTICE
 
-How does differential birth rates affect the population dynamics?
+When you execute SETUP, the orange and blue agents are randomly distributed throughout the neighborhood. But many agents are "unhappy" since they don't have enough same-color neighbors. The unhappy agents move to new locations in the vicinity. But in the new locations, they might tip the balance of the local population, prompting other agents to leave. If a few  agents move into an area, the local blue agents might leave. But when the blue agents move to a new area, they might prompt orange agents to leave that area.
 
-Does the population with a higher birth rate always start off growing faster?
+Over time, the number of unhappy agents decreases. But the neighborhood becomes more segregated, with clusters of orange agents and clusters of blue agents.
 
-Does the population with a lower birth rate always end up extinct?
+In the case where each agent wants at least 30% same-color neighbors, the agents end up with (on average) 70% same-color neighbors. So relatively small individual preferences can lead to significant overall segregation.
 
 ## THINGS TO TRY
 
-Try running an experiment with the same settings many times.
+Try different values for %-SIMILAR-WANTED. How does the overall degree of segregation change?
 
-Does one population always go extinct? How does the number of generations until extinction vary?
+If each agent wants at least 40% same-color neighbors, what percentage (on average) do they end up with?
+
+Try different values of DENSITY. How does the initial occupancy density affect the percentage of unhappy agents? How does it affect the time it takes for the model to finish?
+
+Can you set sliders so that the model never finishes running, and agents keep looking for new locations?
 
 ## EXTENDING THE MODEL
 
-In this model, once the carrying capacity has been exceeded, every member of the population has an equal chance of dying. Try extending the model so that reds and blues have different saturation rates. How does the saturation rate compare with the birthrate in determining the population dynamics?
+The `find-new-spot` procedure has the agents move locally till they find a spot. Can you rewrite this procedure so the agents move directly to an appropriate new spot?
 
-In this model, the original population is set to the carrying capacity (both set to CARRYING-CAPACITY). Would population dynamics be different if these were allowed to vary independently?
+Incorporate social networks into this model.  For instance, have unhappy agents decide on a new location based on information about what a neighborhood is like from other agents in their network.
 
-In this model, reds are red and blues blue and progeny of reds are always red, progeny of blues are always blue. What if you allowed reds to sometimes have blue progeny and vice versa? How would the model dynamics be different?
+Change the rules for agent happiness.  One idea: suppose that the agents need some minimum threshold of "good neighbors" to be happy with their location.  Suppose further that they don't always know if someone makes a good neighbor. When they do, they use that information.  When they don't, they use color as a proxy -- i.e., they assume that agents of the same color make good neighbors.
+
+The two different visualizations emphasize different aspects of the model. The SQUARE-X visualization shows whether an agent is happy or not. Can you design a different visualization that emphasizes different aspects?
+
+## NETLOGO FEATURES
+
+`sprout` is used to create agents while ensuring no patch has more than one agent on it.
+
+When an agent moves, `move-to` is used to move the agent to the center of the patch it eventually finds.
+
+Note two different methods that can be used for find-new-spot, one of them (the one we use) is recursive.
+
+## CREDITS AND REFERENCES
+
+Schelling, T. (1978). Micromotives and Macrobehavior. New York: Norton.
+
+See also: Rauch, J. (2002). Seeing Around Corners; The Atlantic Monthly; April 2002;Volume 289, No. 4; 35-48. https://www.theatlantic.com/magazine/archive/2002/04/seeing-around-corners/302471/
 
 ## HOW TO CITE
 
@@ -312,7 +345,7 @@ If you mention this model or the NetLogo software in a publication, we ask that 
 
 For the model itself:
 
-* Wilensky, U. (1997).  NetLogo Simple Birth Rates model.  http://ccl.northwestern.edu/netlogo/models/SimpleBirthRates.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+* Wilensky, U. (1997).  NetLogo Segregation model.  http://ccl.northwestern.edu/netlogo/models/Segregation.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 Please cite the NetLogo software as:
 
@@ -413,11 +446,6 @@ false
 0
 Circle -7500403 true true 0 0 300
 
-dot
-false
-0
-Circle -7500403 true true 90 90 120
-
 face happy
 false
 0
@@ -441,6 +469,14 @@ Circle -7500403 true true 8 8 285
 Circle -16777216 true false 60 75 60
 Circle -16777216 true false 180 75 60
 Polygon -16777216 true false 150 168 90 184 62 210 47 232 67 244 90 220 109 205 150 198 192 205 210 220 227 242 251 229 236 206 212 183
+
+face-happy
+false
+0
+Circle -7500403 true true 8 8 285
+Circle -16777216 true false 60 75 60
+Circle -16777216 true false 180 75 60
+Polygon -16777216 true false 150 255 90 239 62 213 47 191 67 179 90 203 109 218 150 225 192 218 210 203 227 181 251 194 236 217 212 240
 
 fish
 false
@@ -514,6 +550,15 @@ Rectangle -7500403 true true 127 79 172 94
 Polygon -7500403 true true 195 90 240 150 225 180 165 105
 Polygon -7500403 true true 105 90 60 150 75 180 135 105
 
+person2
+false
+0
+Circle -7500403 true true 105 0 90
+Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 195 90
+Rectangle -7500403 true true 127 79 172 94
+Polygon -7500403 true true 195 90 285 180 255 210 165 105
+Polygon -7500403 true true 105 90 15 180 60 195 135 105
+
 plant
 false
 0
@@ -531,11 +576,35 @@ false
 0
 Rectangle -7500403 true true 30 30 270 270
 
+square - happy
+false
+0
+Rectangle -7500403 true true 30 30 270 270
+Polygon -16777216 false false 75 195 105 240 180 240 210 195 75 195
+
+square - unhappy
+false
+0
+Rectangle -7500403 true true 30 30 270 270
+Polygon -16777216 false false 60 225 105 180 195 180 240 225 75 225
+
 square 2
 false
 0
 Rectangle -7500403 true true 30 30 270 270
 Rectangle -16777216 true false 60 60 240 240
+
+square-small
+false
+0
+Rectangle -7500403 true true 45 45 255 255
+
+square-x
+false
+0
+Rectangle -7500403 true true 30 30 270 270
+Line -16777216 false 75 90 210 210
+Line -16777216 false 210 90 75 210
 
 star
 false
@@ -569,8 +638,12 @@ Polygon -7500403 true true 150 30 15 255 285 255
 triangle 2
 false
 0
-Polygon -7500403 true true 150 30 15 255 285 255
-Polygon -16777216 true false 151 99 225 223 75 224
+Polygon -7500403 true true 0 0 0 300 300 300 30 30
+
+triangle2
+false
+0
+Polygon -7500403 true true 150 0 0 300 300 300
 
 truck
 false
@@ -613,37 +686,32 @@ Line -7500403 true 84 40 221 269
 x
 false
 0
-Polygon -7500403 true true 270 75 225 30 30 225 75 270
-Polygon -7500403 true true 30 75 75 30 270 225 225 270
+Polygon -7500403 true true 300 60 225 0 0 225 60 300
+Polygon -7500403 true true 0 60 75 0 300 240 225 300
 @#$#@#$#@
 NetLogo 6.2.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="blue_fertility_effect_on_red_extinction" repetitions="10" runMetricsEveryStep="false">
+  <experiment name="experiment" repetitions="10" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
-    <exitCondition>red-count = 0</exitCondition>
-    <metric>ticks</metric>
-    <enumeratedValueSet variable="carrying-capacity">
-      <value value="1000"/>
+    <timeLimit steps="500"/>
+    <metric>count turtles with [not happy?]</metric>
+    <enumeratedValueSet variable="density">
+      <value value="95"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="red-fertility">
-      <value value="2"/>
+    <enumeratedValueSet variable="%-similar-wanted">
+      <value value="20"/>
+      <value value="40"/>
+      <value value="50"/>
+      <value value="60"/>
+      <value value="80"/>
     </enumeratedValueSet>
-    <steppedValueSet variable="blue-fertility" first="2.1" step="0.1" last="5"/>
-  </experiment>
-  <experiment name="blue_fertility_and_carrying_capacity" repetitions="10" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <exitCondition>red-count = 0</exitCondition>
-    <metric>ticks</metric>
-    <steppedValueSet variable="carrying-capacity" first="500" step="500" last="1500"/>
-    <enumeratedValueSet variable="red-fertility">
-      <value value="2"/>
+    <enumeratedValueSet variable="visualization">
+      <value value="&quot;square-x&quot;"/>
     </enumeratedValueSet>
-    <steppedValueSet variable="blue-fertility" first="2.1" step="0.1" last="5"/>
   </experiment>
 </experiments>
 @#$#@#$#@
