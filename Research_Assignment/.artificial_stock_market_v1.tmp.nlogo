@@ -16,6 +16,7 @@ turtles-own[
   cash-available ; this is the amount of cash each turtle has to spend on shares
   order-action ; buy or sell
   order-quantity ; this will be used to store the amount of shares each turtle would like to buy or sell
+ prev-value ; this is the previous days' value of shares owned for each turtle
 ]
 
 
@@ -24,6 +25,8 @@ globals[
   current-ni ; this is the current net income of the company
   buy-list ; this contains the buy orders for every tick
   sell-list ; this contains the sell orders for every tick
+  prev-price ; the price from the end of the most recent day
+  price-log ; log of prices from last 100 days (used for plotting)
 ]
 
 
@@ -43,6 +46,8 @@ to setup
 
   set current-price 1
   set current-ni 50
+  set prev-price 1
+  set price-log (list 1)
 
   ask patches [sprout 1]
 
@@ -50,8 +55,9 @@ to setup
   ; also giving the turtles an equal amount of the shares outstanding
   ; also giving turtles cash to spend on purchasing shares
   ask turtles [
-    set investor-type "rational"
+    set investor-type (ifelse-value (who <= (num-rational - 1)) ["rational"] ["irrational"])
     ifelse investor-type = "rational" [set color green] [set color orange]
+    ifelse investor-type = "irrational" [set price-target (random 10 + .01)] [set price-target 1]
     set shares-owned 10
     set cash-available 50
   ]
@@ -67,9 +73,12 @@ end
 
 to go
 
+  if current-price = 0 [stop]
   report-ni
   update-price-target
   place-orders
+  settle-orders
+  log-prices
   tick
 
 end
@@ -105,6 +114,7 @@ to update-price-target
 
   ask turtles[
 
+
     if investor-type = "rational" [
       ; rational turtles update their price target whenever the net income is updated
       ; they do this by estimating the net income in 4 reports from the latest one
@@ -115,6 +125,39 @@ to update-price-target
       ]
 
     ]
+
+
+    if investor-type = "irrational" and shares-owned > 0 [
+      ; irrational agents will update their price-target positively 10%
+      ; if they're share appreciated in value from the last day
+      ; they will update their price-target negatively 10% if they lost value from the last day
+
+      ifelse current-price > prev-price [set price-target (price-target * 1.1)] [set price-target (price-target * .9)]
+
+
+
+
+    ]
+
+
+
+    if investor-type = "irrational" [
+
+    ; irrational investors also change their target price
+    ; based on the target price of their neighbors
+    ; by moving their target price half-way between
+     ; their current target price and the average of their neighbors'
+      ; target prices
+
+      set price-target (price-target + (((mean [price-target] of turtles-on neighbors) - price-target)) / )
+
+
+
+
+    ]
+
+
+
 
 
 
@@ -152,14 +195,16 @@ to place-orders
     ifelse price-target >= current-price [
 
       set order-action "buy"
-      set order-quantity  max (list floor ((cash-available / price-target) * min (list ((.5 * price-target) / current-price) 1)) 1)
-      repeat order-quantity [set buy-list lput (list 1 price-target) buy-list]
+      set order-quantity  (ifelse-value (cash-available - current-price) > 0 [
+        max (list floor ((cash-available / current-price) * min (list ((.5 * price-target) / current-price) 1)) 1)
+      ] [0])
+      repeat order-quantity [set buy-list lput (list 1 price-target who) buy-list]
 
     ] [
 
       set order-action "sell"
-      set order-quantity max (list floor (shares-owned * min (list (current-price / (2 * price-target)) 1)) 1)
-      repeat order-quantity [set sell-list lput (list -1 price-target) sell-list]
+      set order-quantity  (ifelse-value shares-owned > 0 [max (list floor (shares-owned * min (list (current-price / (2 * price-target)) 1)) 1)] [0])
+      repeat order-quantity [set sell-list lput (list -1 price-target who) sell-list]
 
     ]
 
@@ -181,16 +226,97 @@ end
 to settle-orders
 
 
+  ; if there are more buy orders than sell orders
+  ; it automatically executes all the sell orders
+  ; randomly executes a number of buy orders = sell orders
+  ; sets the new market price = median of the top x buy orders, sorted by descending target price
+  ; where x is the difference between the sell orders and buy orders
+
   if ((sum map first sell-list) + (sum map first buy-list)) > 0 [
 
     ask turtles with [order-action = "sell"] [
     ; if there are more buy orders than sell orders, then all of the sell orders are filled
       set shares-owned (shares-owned - order-quantity)
-      set cash-available (order-quantity * current-price)
+      set cash-available (cash-available + (order-quantity * current-price))
 
     ]
 
-    ;
+    ; randomly selects the buy orders equal to the number of sell orders
+    ; then settles those orders for each turtle
+
+    foreach (n-of (- sum map first sell-list) buy-list)  [
+
+      x -> ask turtles with [who = (last x)] [
+
+        set shares-owned (shares-owned + 1)
+        set cash-available (cash-available - current-price)
+
+      ]
+
+    ]
+
+
+     ; setting previous price equal to the current price
+
+    set prev-price current-price
+
+
+
+
+    ; setting the current-price to the median price-target of the buy-list
+    ; this should set it to a price where the market would then
+    ; naturally settle, since half of the orders will then be below, and other half above
+    ; the new market price
+    ; only does the median of the top x of the buy list sorted descending by price
+    ; where x is the difference between the total buy list and sell total sell list
+
+    set current-price ((median (sublist (sort (map [x -> item 1 x] buy-list)) 0 ((sum map first sell-list) + (sum map first buy-list)))) + .1)
+
+
+
+
+  ]
+
+
+
+
+  if ((sum map first sell-list) + (sum map first buy-list)) < 0 [
+
+    ask turtles with [order-action = "buy"] [
+    ; if there are more sell orders than buy orders, then all of the buy orders are filled
+      set shares-owned (shares-owned + order-quantity)
+      set cash-available (cash-available - (order-quantity * current-price))
+
+    ]
+
+    ; randomly selects the sell orders equal to the number of buy orders
+    ; then settles those orders for each turtle
+
+    foreach (n-of (sum map first buy-list) sell-list)  [
+
+      x -> ask turtles with [who = (last x)] [
+
+        set shares-owned (shares-owned - 1)
+        set cash-available (cash-available + current-price)
+
+      ]
+
+    ]
+
+
+
+    ; setting previous price equal to the current price
+
+    set prev-price current-price
+
+    ; setting the current-price to the median price-target of the sell-list
+    ; this should set it to a price where the market would then
+    ; naturally settle, since half of the orders will then be below, and other half above
+    ; the new market price
+    ; only does the median of the top x of the buy list sorted descending by price
+    ; where x is the difference between the total buy list and sell total sell list
+
+    set current-price (max (list (median (sublist (map [x -> item 1 x] sell-list) 0 ((- sum map first sell-list) + (- sum map first buy-list)))) 0))
 
 
 
@@ -201,7 +327,14 @@ to settle-orders
 
 
 
+  ; if the market is in perfect balance,
+  ; or if there is no demand or supply
+  ; then the price remains the same
+  if ((sum map first sell-list) + (sum map first buy-list)) = 0 [
 
+  set prev-price current-price
+
+  ]
 
 
 end
@@ -210,6 +343,15 @@ end
 
 
 
+
+; log prices command =====================================
+
+to log-prices
+
+
+  set price-log fput current-price (sublist price-log 0 (min (list 99 (length price-log))))
+
+end
 
 
 
@@ -309,7 +451,7 @@ mean-ni-growth
 mean-ni-growth
 -.1
 .1
-0.013
+0.01
 .001
 1
 NIL
@@ -331,22 +473,82 @@ NIL
 HORIZONTAL
 
 PLOT
-720
-132
-920
-282
+644
+27
+1132
+198
 price plot
 ticks
 price
 0.0
-10.0
+1.1
 0.0
-10.0
+2.0
 true
-false
-"" ""
+true
+"" "if (ticks > 100) [set-plot-x-range (ticks - 100) (ticks)]\nset-plot-y-range 0 (ceiling (1.1 * (max price-log)))"
 PENS
-"default" 1.0 0 -16777216 true "" "plot current-price"
+"Price" 1.0 0 -16777216 true "" "plot current-price"
+"Net Income" 1.0 0 -13840069 true "" "plot (current-ni / 1000) * 20 "
+
+SLIDER
+17
+254
+189
+287
+num-rational
+num-rational
+0
+100
+10.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+646
+229
+740
+274
+Irration Cash
+sum [cash-available] of (turtles with [investor-type = \"irrational\"])
+0
+1
+11
+
+MONITOR
+756
+230
+870
+275
+irrational shares
+sum [shares-owned] of (turtles with [investor-type = \"irrational\"])
+0
+1
+11
+
+MONITOR
+896
+233
+1044
+278
+irrational price-target
+mean [price-target] of (turtles with [investor-type = \"irrational\"])
+2
+1
+11
+
+MONITOR
+1068
+236
+1165
+281
+NIL
+current-price
+2
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
