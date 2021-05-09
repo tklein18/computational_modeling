@@ -77,6 +77,7 @@ to go
   report-ni
   update-price-target
   place-orders
+  color-patches
   settle-orders
   log-prices
   tick
@@ -127,12 +128,13 @@ to update-price-target
     ]
 
 
-    if investor-type = "irrational" and shares-owned > 0 [
+    if investor-type = "irrational" ;and shares-owned > 0
+    [
       ; irrational agents will update their price-target positively 10%
       ; if they're share appreciated in value from the last day
       ; they will update their price-target negatively 10% if they lost value from the last day
 
-      ifelse current-price > prev-price [set price-target (price-target * 1.1)] [set price-target (price-target * .9)]
+      ifelse current-price > prev-price [set price-target (price-target * 1.1)] [set price-target (price-target * .95)]
 
 
 
@@ -214,6 +216,44 @@ to place-orders
 
 
 end
+
+
+
+
+
+
+; color patches procedures ================================================
+
+
+
+to color-patches
+
+
+  ask patches [
+
+     if count (turtles-here with [order-action = "buy"]) > 0 [set pcolor 87]
+
+    if count (turtles-here with [order-action = "sell"]) > 0 and (count (turtles-here with [shares-owned > 0]) > 0) [set pcolor 37]
+
+
+    if count (turtles-here with [order-action = "sell"]) > 0 and (count (turtles-here with [shares-owned = 0]) > 0) [set pcolor 0]
+
+
+
+
+
+  ]
+
+
+end
+
+
+
+
+
+
+
+
 
 
 
@@ -332,6 +372,26 @@ to settle-orders
   ; then the price remains the same
   if ((sum map first sell-list) + (sum map first buy-list)) = 0 [
 
+    if length buy-list > 0 [
+
+        ask turtles with [order-action = "sell"] [
+    ; if there are equal buy orders and sell orders, then all of the sell orders are filled
+      set shares-owned (shares-owned - order-quantity)
+      set cash-available (cash-available + (order-quantity * current-price))
+
+    ]
+
+
+          ask turtles with [order-action = "buy"] [
+    ; if there are equal sell orders and buy orders, then all of the buy orders are filled
+      set shares-owned (shares-owned + order-quantity)
+      set cash-available (cash-available - (order-quantity * current-price))
+
+    ]
+
+
+    ]
+
   set prev-price current-price
 
   ]
@@ -345,6 +405,8 @@ end
 
 
 ; log prices command =====================================
+; this logs the last 100 prices
+; used to adjust the graph of prices
 
 to log-prices
 
@@ -352,7 +414,6 @@ to log-prices
   set price-log fput current-price (sublist price-log 0 (min (list 99 (length price-log))))
 
 end
-
 
 
 
@@ -451,7 +512,7 @@ mean-ni-growth
 mean-ni-growth
 -.1
 .1
-0.01
+0.015
 .001
 1
 NIL
@@ -466,7 +527,7 @@ sd-ni-growth
 sd-ni-growth
 .005
 .5
-0.02
+0.03
 .005
 1
 NIL
@@ -492,15 +553,15 @@ PENS
 "Net Income" 1.0 0 -13840069 true "" "plot (current-ni / 1000) * 20 "
 
 SLIDER
-17
-254
-189
-287
+10
+241
+182
+274
 num-rational
 num-rational
 0
 100
-33.0
+60.0
 1
 1
 NIL

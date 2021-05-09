@@ -16,7 +16,8 @@ turtles-own[
   cash-available ; this is the amount of cash each turtle has to spend on shares
   order-action ; buy or sell
   order-quantity ; this will be used to store the amount of shares each turtle would like to buy or sell
- prev-value ; this is the previous days' value of shares owned for each turtle
+  prev-value ; this is the previous days' value of shares owned for each turtle
+  influencer; turtles are randomly selected at the beginning to be influencers, these turtles will influence the price target of irrational turtles
 ]
 
 
@@ -60,7 +61,27 @@ to setup
     ifelse investor-type = "irrational" [set price-target (random 10 + .01)] [set price-target 1]
     set shares-owned 10
     set cash-available 50
+    set influencer 0
   ]
+
+  ; making random turtles influencers
+  ask n-of num-influencer turtles [
+    set influencer 1
+  ]
+
+  ; making influencers stars so that we can identify them
+  ask turtles with [influencer = 1][
+
+    set shape "star"
+
+  ]
+
+
+
+
+
+
+
 
 
   reset-ticks
@@ -119,22 +140,22 @@ to update-price-target
     if investor-type = "rational" [
       ; rational turtles update their price target whenever the net income is updated
       ; they do this by estimating the net income in 4 reports from the latest one
-      ; and then using the number of shares outstanding (200,000) and their P/E target to calculate a fair value share price
+      ; and then using the number of shares outstanding (1,000) and their P/E target to calculate a fair value share price
       ; they then discount that fair value share price by their target return (.05) to calculate their target price
       if remainder ticks 65 = 0[
-        set price-target max (list ((((current-ni * (1 + (random-normal (4 * mean-ni-growth) (4 * sd-ni-growth)))) / 1000) * 20) / 1.05) .0)
+        set price-target max (list ((((current-ni * (1 + (random-normal (4 * mean-ni-growth) (4 * sd-ni-growth)))) / 1000) * 20) / 1.05) .01)
       ]
 
     ]
 
 
-    if investor-type = "irrational" ;and shares-owned > 0
+    if investor-type = "irrational" and influencer = 0
     [
-      ; irrational agents will update their price-target positively 10%
+      ; irrational agents will update their price-target positively 1%
       ; if they're share appreciated in value from the last day
-      ; they will update their price-target negatively 10% if they lost value from the last day
+      ; they will update their price-target negatively 1% if they lost value from the last day
 
-      ifelse current-price > prev-price [set price-target (price-target * 1.1)] [set price-target (price-target * .95)]
+      ifelse current-price > prev-price [set price-target (price-target + (current-price * .01))] [set price-target (price-target - (current-price * .01))]
 
 
 
@@ -143,15 +164,15 @@ to update-price-target
 
 
 
-    if investor-type = "irrational" [
+    if investor-type = "irrational" and influencer = 0[
 
     ; irrational investors also change their target price
     ; based on the target price of their neighbors
-    ; by moving their target price half-way between
+    ; by moving their target price 10% between
      ; their current target price and the average of their neighbors'
       ; target prices
 
-      set price-target (price-target + (((mean [price-target] of turtles-on neighbors) - price-target)) / 10)
+      set price-target (price-target + ((([price-target] of min-one-of turtles with [influencer = 1] [xcor + ycor]) - price-target) / 10))
 
 
 
@@ -159,6 +180,14 @@ to update-price-target
     ]
 
 
+
+
+    ;
+    if investor-type = "irrational" and influencer = 1[
+
+      if 1 = random 65 [set price-target (current-price * (random-float 10))]
+
+    ]
 
 
 
@@ -197,15 +226,13 @@ to place-orders
     ifelse price-target >= current-price [
 
       set order-action "buy"
-      set order-quantity  (ifelse-value (cash-available - current-price) > 0 [
-        max (list floor ((cash-available / current-price) * min (list ((.5 * price-target) / current-price) 1)) 1)
-      ] [0])
+      set order-quantity  (ifelse-value (cash-available - current-price) > 0 [1] [0])
       repeat order-quantity [set buy-list lput (list 1 price-target who) buy-list]
 
     ] [
 
       set order-action "sell"
-      set order-quantity  (ifelse-value shares-owned > 0 [max (list floor (shares-owned * min (list (current-price / (2 * price-target)) 1)) 1)] [0])
+      set order-quantity  (ifelse-value shares-owned > 0 [1] [0])
       repeat order-quantity [set sell-list lput (list -1 price-target who) sell-list]
 
     ]
@@ -303,14 +330,12 @@ to settle-orders
 
 
 
-    ; setting the current-price to the median price-target of the buy-list
-    ; this should set it to a price where the market would then
-    ; naturally settle, since half of the orders will then be below, and other half above
-    ; the new market price
-    ; only does the median of the top x of the buy list sorted descending by price
-    ; where x is the difference between the total buy list and sell total sell list
+    ; setting the current price equal to the current price plus a change
+    ; the change is equal to the ratio of the difference in buy and sell orders over the total number of outstanding shares * 5
+    ; times the current price
+    ; so if agents demanded 1000 more shares than were available to sell, the price would increase 20%
 
-    set current-price ((median (sublist (sort (map [x -> item 1 x] buy-list)) 0 ((sum map first sell-list) + (sum map first buy-list)))) + .1)
+    set current-price (current-price + (current-price * min (list (((sum map first sell-list) + (sum map first buy-list)) / 500) .2)))
 
 
 
@@ -349,14 +374,12 @@ to settle-orders
 
     set prev-price current-price
 
-    ; setting the current-price to the median price-target of the sell-list
-    ; this should set it to a price where the market would then
-    ; naturally settle, since half of the orders will then be below, and other half above
-    ; the new market price
-    ; only does the median of the top x of the buy list sorted descending by price
-    ; where x is the difference between the total buy list and sell total sell list
+   ; setting the current price equal to the current price plus a change
+    ; the change is equal to the ratio of the difference in buy and sell orders over the total number of outstanding shares * 5
+    ; times the current price
+    ; so if agents wanted to sell 1000 more shares than were available to buy, the price would decrease 20%
 
-    set current-price (max (list (median (sublist (map [x -> item 1 x] sell-list) 0 ((- sum map first sell-list) + (- sum map first buy-list)))) 0))
+    set current-price (current-price - (current-price * min (list (((- sum map first sell-list) + (- sum map first buy-list)) / 500) .2)))
 
 
 
@@ -511,7 +534,7 @@ mean-ni-growth
 mean-ni-growth
 -.1
 .1
-0.1
+0.018
 .001
 1
 NIL
@@ -525,8 +548,8 @@ SLIDER
 sd-ni-growth
 sd-ni-growth
 .005
-.5
-0.28
+.3
+0.075
 .005
 1
 NIL
@@ -560,7 +583,7 @@ num-rational
 num-rational
 0
 100
-60.0
+0.0
 1
 1
 NIL
@@ -609,6 +632,16 @@ current-price
 2
 1
 11
+
+CHOOSER
+26
+290
+164
+335
+num-influencer
+num-influencer
+1 2 3 4 5 6 7 8 9 10
+9
 
 @#$#@#$#@
 ## WHAT IS IT?
