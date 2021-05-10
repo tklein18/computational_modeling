@@ -18,6 +18,10 @@ turtles-own[
   order-quantity ; this will be used to store the amount of shares each turtle would like to buy or sell
   prev-value ; this is the previous days' value of shares owned for each turtle
   influencer; turtles are randomly selected at the beginning to be influencers, these turtles will influence the price target of irrational turtles
+  memory; the number of days an irrational turtle looks back to determine whether to sell everything or not
+  timeout; if 1 then irrational turtle will no longer adjust price
+  return; the day that irrational turtles return to investing after previously selling everything
+  memory-restart; this is when turtles start looking at past prices again
 ]
 
 
@@ -62,6 +66,7 @@ to setup
     set shares-owned 10
     set cash-available 50
     set influencer 0
+    if investor-type = "irrational" [set memory (30 + random 70)]
   ]
 
   ; making random turtles influencers
@@ -149,13 +154,21 @@ to update-price-target
     ]
 
 
-    if investor-type = "irrational" and influencer = 0
-    [
-      ; irrational agents will update their price-target positively 1%
-      ; if they're share appreciated in value from the last day
-      ; they will update their price-target negatively 1% if they lost value from the last day
 
-      ifelse current-price > prev-price [set price-target (price-target + (current-price * .01))] [set price-target (price-target - (current-price * .01))]
+
+    if investor-type = "irrational" and influencer = 0 and timeout = 0 and shares-owned > 0[
+
+
+      if memory < (length price-log) [
+
+       if (item memory price-log) < current-price [
+        set timeout 1
+        set price-target .01
+        set return (ticks + 30)
+        set color black
+      ]
+
+      ]
 
 
 
@@ -164,15 +177,46 @@ to update-price-target
 
 
 
-    if investor-type = "irrational" and influencer = 0[
+    ; once the return tick has been reached, the turtle sets their price target
+    ; equal to the closest influencer target
+    if timeout = 1 [
 
-    ; irrational investors also change their target price
+      if return = ticks [
+        set timeout 0
+        set price-target ([price-target] of min-one-of turtles with [influencer = 1] [xcor + ycor])
+        set color orange
+        set memory-restart (ticks + memory)
+      ]
+
+    ]
+
+
+
+
+
+
+
+    if investor-type = "irrational" and influencer = 0 and timeout = 0
+    [
+
+
+
+
+      ; irrational agents will update their price-target positively 1%
+      ; if they're share appreciated in value from the last day
+      ; they will update their price-target negatively 1% if they lost value from the last day
+
+          ; irrational investors also change their target price
     ; based on the target price of their neighbors
     ; by moving their target price 10% between
      ; their current target price and the average of their neighbors'
       ; target prices
 
-      set price-target (price-target + ((([price-target] of min-one-of turtles with [influencer = 1] [xcor + ycor]) - price-target) / 10))
+
+      ifelse current-price > prev-price [
+        set price-target (price-target + (current-price * .01))
+        set price-target (price-target + ((([price-target] of min-one-of turtles with [influencer = 1] [xcor + ycor]) - price-target) / 10))
+      ] [set price-target (price-target - (price-target * .01))]
 
 
 
@@ -182,7 +226,8 @@ to update-price-target
 
 
 
-    ;
+    ; irrational influencers have a random chance of updating their price-target
+    ; by a random number
     if investor-type = "irrational" and influencer = 1[
 
       if 1 = random 65 [set price-target (current-price * (random-float 10))]
@@ -583,7 +628,7 @@ num-rational
 num-rational
 0
 100
-0.0
+25.0
 1
 1
 NIL
