@@ -151,7 +151,7 @@ to update-price-target
       ; and then using the number of shares outstanding (1,000) and their P/E target to calculate a fair value share price
       ; they then discount that fair value share price by their target return (.05) to calculate their target price
       if remainder ticks 65 = 0[
-        set price-target max (list ((((current-ni * (1 + (random-normal (4 * mean-ni-growth) (4 * sd-ni-growth)))) / 1000) * 20) / 1.05) .01)
+        set price-target max (list ((((current-ni * (1 + (random-normal (4 * mean-ni-growth) (4 * sd-ni-growth))))) / 1000) * 20) / 1.05) .01)
       ]
 
     ]

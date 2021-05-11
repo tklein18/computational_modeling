@@ -151,7 +151,7 @@ to update-price-target
       ; and then using the number of shares outstanding (1,000) and their P/E target to calculate a fair value share price
       ; they then discount that fair value share price by their target return (.05) to calculate their target price
       if remainder ticks 65 = 0[
-        set price-target max (list ((((current-ni * (1 + (random-normal (4 * mean-ni-growth) (4 * sd-ni-growth)))) / 1000) * 20) / 1.05) .01)
+        set price-target max (list ((((current-ni * ((1 + (random-normal (mean-ni-growth) (sd-ni-growth))) ^ 4)) / 1000) * 20) / 1.05) .01)
       ]
 
     ]
@@ -582,7 +582,7 @@ mean-ni-growth
 mean-ni-growth
 -.1
 .1
-0.055
+0.039
 .001
 1
 NIL
@@ -597,7 +597,7 @@ sd-ni-growth
 sd-ni-growth
 .005
 .3
-0.16
+0.122
 .005
 1
 NIL
@@ -631,7 +631,7 @@ num-rational
 num-rational
 0
 100
-20.0
+90.0
 1
 1
 NIL
@@ -689,7 +689,7 @@ CHOOSER
 num-influencer
 num-influencer
 1 2 3 4 5 6 7 8 9 10
-0
+9
 
 @#$#@#$#@
 ## WHAT IS IT?
