@@ -66,7 +66,10 @@ to setup
     set shares-owned 10
     set cash-available 50
     set influencer 0
-    if investor-type = "irrational" [set memory (30 + random 70)]
+    if investor-type = "irrational" [
+      set memory (30 + random 70)
+      set memory-restart 0
+    ]
   ]
 
   ; making random turtles influencers
@@ -159,9 +162,9 @@ to update-price-target
     if investor-type = "irrational" and influencer = 0 and timeout = 0 and shares-owned > 0[
 
 
-      if memory < (length price-log) [
+      if memory < (length price-log) and ticks > memory-restart[
 
-       if (item memory price-log) < current-price [
+       if (item memory price-log) > current-price [
         set timeout 1
         set price-target .01
         set return (ticks + 30)
@@ -579,7 +582,7 @@ mean-ni-growth
 mean-ni-growth
 -.1
 .1
-0.018
+0.055
 .001
 1
 NIL
@@ -594,7 +597,7 @@ sd-ni-growth
 sd-ni-growth
 .005
 .3
-0.075
+0.16
 .005
 1
 NIL
@@ -628,7 +631,7 @@ num-rational
 num-rational
 0
 100
-25.0
+20.0
 1
 1
 NIL
@@ -637,9 +640,9 @@ HORIZONTAL
 MONITOR
 646
 229
-740
+750
 274
-Irration Cash
+Irrational Cash
 sum [cash-available] of (turtles with [investor-type = \"irrational\"])
 0
 1
@@ -650,7 +653,7 @@ MONITOR
 230
 870
 275
-irrational shares
+Irrational Shares
 sum [shares-owned] of (turtles with [investor-type = \"irrational\"])
 0
 1
@@ -661,7 +664,7 @@ MONITOR
 233
 1044
 278
-irrational price-target
+Irrational Price-target
 mean [price-target] of (turtles with [investor-type = \"irrational\"])
 2
 1
@@ -686,44 +689,90 @@ CHOOSER
 num-influencer
 num-influencer
 1 2 3 4 5 6 7 8 9 10
-9
+0
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+This model attempts to a simulate a market for a stock of a public company, where some of the traders are "rational" and trade based on the fundamental value of the company, and the other traders are "irrational" and trade semi-randomly. 
 
 ## HOW IT WORKS
 
-(what rules the agents use to create the overall behavior of the model)
+The model features two sets of traders: "rational" traders (green) that trade based on the fundamental value of the company and "irrational" traders (organge) that trade semi-randomly. There is also a special class of trader called "influencers". "Influencers" can be rational or irrational, and appear as a star in the simulation. 
+
+The company starts with a net income of 50, and every 65 turns (about once a quarter, in terms of trading days) the net income is updated. The net income is updated by a random normal number, with a mean equal to mean-ni-growth, and standard deviation set to sd-ni-growth, which are both user set variables. The number of shares does not change.
+
+When a new net income has been reported, "rational" traders forecast the net income  of the company a year into the future, and then use this number to determine a fair-market price for the stock at that point in time. Then they discount that fair-market price by their discount rate. They forecast the future net income per share using a random-normal number with a mean equal to four times mean-ni-growth, and standard deviation equal to four time sd-ni-growth. The future net income  is first converted to net income per share by dividing it by 1000 (the number of outstanding shares). Then, the net income per share estimate is converted into a stock price by multiplying it by the Price to Earnings for the industry. This is a common method used to evaluate whether a particular stock is fairly priced. In this model the P/E is assumed to be 20. Once the future fair-market price has been determined by the "rational" trader, they then discount that price by the average rate of return that assets of a similar risk-profile generate. This is a common method for determining whether an asset is a good investment. In this case, it is assumed to be 5%. This discounted future price becomes the "rational" agents price-target. 
+
+"Irrational" agents begin the simulation with a price-target that is a random number between 0.1 and 9.1. Every turn "irrational" agents update their prices in several ways. 
+
+The first way "irrational" agents can update their price is by looking at the price at some point in the past. Each "irrational" agent is assigned a memory, which is a number between 30 and 99. Once the number of turns has eclipsed their memory, and if the "irrational" agent owns at least one share, they will look back at the market price a number of turns ago equal to their memory (i.e. if their memory is 50, they will look at the market price 50 turns ago). If that price is greater than the current market price, they will set their price-target to .01, and will not update their price-target again for a number of turns equal to their memory. They will also turn themselves black. Once the agent begins updating their price-target again, they will turn themselves orange. Also, they will wait to look in the past until they have begun updating their price-target for a number of turns equal to their memory. If the "irrational" agent skips this step (for reasons discussed), or if the current market price is greater than the historical price they looked at, they move on to the next step. 
+
+The next way that "irrational" agents can update their price-target is by comparing the current-price to the previous day's price. If the current price is greater than the previous day's price, they will increase their price-target by 1% of the current-market price. If the current-price is less than the previous day's price, they will reduce their price-target by 1% of their current price-target. 
+
+Additionally, if the current-price is greater than the previous day's price, "irrational" agents will adjust their price towards the closest "influencer", by 10% of the difference between their price-target and the influencer's price-target.
+
+"Influencers" set their price-target one of two ways: if the "influencer" is "rational" they set their price-target just like all the other "rational" agents. If the "influencer" is "irrational" then they begin the simulation with a price-target randomly chosen between 0.1 and 9.1, and then have a 1 in 65 chance of updating their price-target every turn. On the occasions that they do update their price-target during a turn, its done my multiplying the current-price times a random float between 0 and 10.
+
+After all agents have updated their price-targets, if applicable, they decide whether or note to place an order. All agents make this decision the same way. If the current price is less than or equal to their price-target, they place a buy order for one share, given they have cash available greater to or equal than the current price. If the current price is greater than their price-target, they place a sell order for one share, given that they have at least one share to sell. After an agent makes this decision, their patch turns a color to show what decision has been made: light blue for buy, or light red for sell. Black patches indicate the agent would like to sell, but has no shares to sell. 
+
+After all orders have been placed, they are settled. If there were more buy orders than sell orders, then all sell orders are processed, and a number of buy orders equal to the number of sell orders are processed. Additionally, the price will increase by a percentage equal to the difference between the number of buy and sell orders divided by 500. This means that if every agent places a buy order, the price will increase 20%. 
+
+When a buy order is settled, the agent recieves 1 share, and loses an amount of cash equal to the current price. When a sell order is settled, the agent loses 1 share and receives an amount of cash equal to the current-price. 
+
+If there are more sell orders than buy orders, then the reverse happens: all buy orders are settled, a number of sell orders equal to the number of buy orders are settled, and the price decreases by a percentage equal to the difference between buy orders and sell orders over 500. 
+
+If the number of buy orders equals the number of sell orders exactly, then the price remains the same. 
+
 
 ## HOW TO USE IT
 
-(how to use the model, including a description of each of the items in the Interface tab)
+There are a few different settings you can use to adjust the simulation. The first two, mean-ni-growth and sd-ni-growth change the normal distribution that is used to adjust the company's net income, and the normal distribution that "rational" trader's use to predict the future price of company's stock. Changing these values can be used to simulate different types of assets, with different levels of risk and return. 
+
+The next setting that can be changed is num-rational. This controls the number of "rational" agents there are in the simulation. There are always 100 agents, so setting num-rational to 0 will create a simulation of 100 "irrational" agents and no "rational" agents, and setting it to 100 will create a simulation of 100 "rational" agents, and no "irrational" agents. 
+
+The final setting that can be changed is num-influencer. This controls the number of "influencer" agents that are created. "Influencer" agents are randomly selected from the "ratinoal" and "irrational" agents that are created, and thus can be either "rational" or "irrational". 
+
+Clicking the "setup" button will generate all the agents, give each agent 10 shares, give each agent $50, set the company's net income $50, and set the current price to $1. 
+
+Clicking "go" will run the simulation until the button is clicked again. Clicking "go once" will run the simulation for one turn. One turn captures agents adjusting their target-prices (if applicable), agents placing buy and sell orders, those orders being settled, and a new market price being determined. 
+
+To the right of the agent space is a graph. The graph shows the current market price for the past 100 days. It also shows the net income per share times 20 (the hypothetical price to earnings ratio in this simulation), which can be thought of as an estimate the current fair market value. 
+
+Under the graph are four boxes. The first box, labelled "Irrational Cash" shows the total cash available of all "irrational" agents. The "Irrational Shares" box shows the total number of shares owned by "irrational" agents. The "Irrational Price-target" box shows the average target-price of "irrational" agents. Lastly, the "current-price" box shows the current market price.
+
+
 
 ## THINGS TO NOTICE
 
-(suggested things for the user to notice while running the model)
+Notice how the current price relates to the estimate of the fundamental value of the company (labelled "Net Income" in the graph). As the current price significantly deviates from the fundamental value, the company becomes significantly under or over valued.
+
+Also, notice how "rational" agents only trade when the price is within a specified range. This is because they develop their target-prices by using the net income times a random normal number. As the current price extends far outside of this range, "rational" agents sell all of their shares, and then stop trading. 
 
 ## THINGS TO TRY
 
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
+Try varying numbers of "rational" agents to see how the prescence, or lack there-of, of "rational" agents affects the movement of the market price. 
+
+Also try different numbers of "influencers" to see how the number of "influencers" changes the behaviour of the "irrational" agents.
+
+Simulations with the same settings can vary quite dramatically. For example, if there is only 1 "influencer", and it happens to be a "rational" agent, the simulation will dramatically different than if the "influencer" was an "irrational" agent.
 
 ## EXTENDING THE MODEL
 
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
+There are quite a few ways to extend this model. 
 
-## NETLOGO FEATURES
+Many of the settings are hard coded into the model. For example, the discount rate that "rational" agents use is hard coded as 5%, and the "memory" of "irrational" agents is hard coded as a random number between 30 and 99. These settings could be configured, either by hard coding over them, or by creating using the NetLogo user interface to make them configurable. This would allow for making the model more adaptable to real-world scenarios. 
 
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
+The model assumes that all "rational" agents stay "rational", and all "irrational" agents stay "irrational". It seems more plausible that in the real-world some "rational" traders would become "irrational" during large swings in prices, and some "irrational" traders might become "rational" during moments of calm in the market. 
 
-## RELATED MODELS
+The model gives every agent a fixed amount of cash and shares at the beginning of the simulation. These amounts could be adjusted. It would be particularly interesting to study how the initial ratio of cash and shares between "rational" and "irrational" agents affects market outcomes. 
 
-(models in the NetLogo Models Library and elsewhere which are of related interest)
+Additionally, because the amount of cash does not change over time, the simulation really can't be run for a long amount of time - eventually the fundamental value of the company will be above what anyone in the market can pay for. It would be great if there was a method for introducing more cash to the market. This would also allow for starting the agents with less cash - the total amount of cash that the agents start with ($5000) is enough to buy the company five times over at the start of the simulation, which seems a bit excessive, but is neccessary since there is no method to introduce more cash. 
 
-## CREDITS AND REFERENCES
 
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+
+
+
 @#$#@#$#@
 default
 true
@@ -1034,6 +1083,35 @@ NetLogo 6.2.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment" repetitions="10" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="2600"/>
+    <metric>current-price</metric>
+    <metric>current-ni</metric>
+    <metric>sum [cash-available] of (turtles with [investor-type = "irrational"])</metric>
+    <metric>sum [shares-owned] of (turtles with [investor-type = "irrational"])</metric>
+    <enumeratedValueSet variable="mean-ni-growth">
+      <value value="0.018"/>
+      <value value="0.002"/>
+      <value value="0.039"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-rational">
+      <value value="10"/>
+      <value value="50"/>
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-influencer">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sd-ni-growth">
+      <value value="0.073"/>
+      <value value="0.027"/>
+      <value value="0.122"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
