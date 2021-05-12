@@ -151,7 +151,7 @@ to update-price-target
       ; and then using the number of shares outstanding (1,000) and their P/E target to calculate a fair value share price
       ; they then discount that fair value share price by their target return (.05) to calculate their target price
       if remainder ticks 65 = 0[
-        set price-target max (list ((((current-ni * (1 + (random-normal (4 * mean-ni-growth) (4 * sd-ni-growth))))) / 1000) * 20) / 1.05) .01)
+        set price-target max (list ((((current-ni * ((1 + (random-normal (mean-ni-growth) (sd-ni-growth))) ^ 4)) / 1000) * 20) / 1.05) .01)
       ]
 
     ]
@@ -582,7 +582,7 @@ mean-ni-growth
 mean-ni-growth
 -.1
 .1
-0.055
+0.039
 .001
 1
 NIL
@@ -597,7 +597,7 @@ sd-ni-growth
 sd-ni-growth
 .005
 .3
-0.16
+0.122
 .005
 1
 NIL
@@ -631,7 +631,7 @@ num-rational
 num-rational
 0
 100
-20.0
+90.0
 1
 1
 NIL
@@ -689,7 +689,7 @@ CHOOSER
 num-influencer
 num-influencer
 1 2 3 4 5 6 7 8 9 10
-0
+9
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -706,7 +706,7 @@ When a new net income has been reported, "rational" traders forecast the net inc
 
 "Irrational" agents begin the simulation with a price-target that is a random number between 0.1 and 9.1. Every turn "irrational" agents update their prices in several ways. 
 
-The first way "irrational" agents can update their price is by looking at the price at some point in the past. Each "irrational" agent is assigned a memory, which is a number between 30 and 99. Once the number of turns has eclipsed their memory, and if the "irrational" agent owns at least one share, they will look back at the market price a number of turns ago equal to their memory (i.e. if their memory is 50, they will look at the market price 50 turns ago). If that price is greater than the current market price, they will set their price-target to .01, and will not update their price-target again for a number of turns equal to their memory. They will also turn themselves black. Once the agent begins updating their price-target again, they will turn themselves orange. Also, they will wait to look in the past until they have begun updating their price-target for a number of turns equal to their memory. If the "irrational" agent skips this step (for reasons discussed), or if the current market price is greater than the historical price they looked at, they move on to the next step. 
+The first way "irrational" agents can update their price is by looking at the price at some point in the past. Each "irrational" agent is assigned a memory, which is a number between 30 and 99. Once the number of turns has eclipsed their memory, and if the "irrational" agent owns at least one share, they will look back at the market price a number of turns ago equal to their memory (i.e. if their memory is 50, they will look at the market price 50 turns ago). If that price is greater than the current market price, they will set their price-target to .01, and will not update their price-target again for a number of turns equal to their memory. They will also turn themselves black. Once the agent begins updating their price-target again, they will sturn themselves orange. Also, they will wait to look in the past until they have begun updating their price-target for a number of turns equal to their memory. If the "irrational" agent skips this step (for reasons discussed), or if the current market price is greater than the historical price they looked at, they move on to the next step. 
 
 The next way that "irrational" agents can update their price-target is by comparing the current-price to the previous day's price. If the current price is greater than the previous day's price, they will increase their price-target by 1% of the current-market price. If the current-price is less than the previous day's price, they will reduce their price-target by 1% of their current price-target. 
 
