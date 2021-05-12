@@ -2,6 +2,8 @@
 # my simulated stock market 
 
 
+
+# setting the file path 
 setwd(file.path(
   "", "Users", "tklein", "Desktop", "JHU_Classes",
   "computational_modeling", "Research_Assignment"
@@ -25,6 +27,8 @@ simulation_results <- read_csv(
 )
 
 
+# changing the column names so that they work better in R
+
 new_names <- names(simulation_results) %>%
   str_replace_all(pattern = "-", replacement = "_") %>% 
   str_replace_all(pattern = OPEN_BRACKET, replacement = "") %>% 
@@ -43,6 +47,8 @@ names(simulation_results) <- new_names
 # data exploration ====================================================
 
 
+# just viewing some summary statistics of the price
+# through different lenses of the parameters
 
 summary(simulation_results$current_price)
 
@@ -75,6 +81,11 @@ simulation_results %>%
 
 
 
+# visualizing the distribution 
+# of the prices in the different simulations
+# notice how the distributions are similar, 
+# but the simulations with more irrational agents 
+# have much fatter tails
 
 simulation_results %>% 
   ggplot(aes(current_price))+ 
@@ -112,7 +123,7 @@ simulation_results %>%
 
 # going to create two columns that calculate the 
 # fair market price at every point in time for every simulation
-# based on a two sigma and three sigma net income growth 
+# based on a two and three sigma net income growth 
 # if the price is above these levels, then the market price
 # is clearly in a state of exuberance 
 
@@ -156,24 +167,10 @@ sim_results_with_bubs <- simulation_results %>%
 
 
 
-sim_results_with_bubs %>% 
-  mutate(
-    num_rational = factor(num_rational, levels = c("10", "50", "90"))
-  ) %>% 
-  group_by(num_rational, mean_desc, sd_desc, run_number) %>% 
-  summarize(
-    number_days_bubble = sum(bubble_two)
-  ) %>% 
-  group_by(num_rational, mean_desc, sd_desc) %>% 
-  summarize(mean_days_bubble = mean(number_days_bubble)) %>% 
-  ggplot(aes(num_rational, mean_days_bubble))+ 
-  geom_col()+
-  theme_bw()+
-  facet_grid(mean_desc ~ sd_desc, scales = "fixed")+
-  ggsave(file.path("R_output", "two_bubble_days.png"), width = 7, height = 3.2)
-
-
-
+# graphing average number of days
+# in bubble teritorry
+# when bubble is defined as
+# a price reflecting more than 3 sigma ni-growth
 
 
 sim_results_with_bubs %>% 
@@ -198,23 +195,11 @@ sim_results_with_bubs %>%
 
 
 
-sim_results_with_bubs %>% 
-  mutate(
-    num_rational = factor(num_rational, levels = c("10", "50", "90"))
-  ) %>% 
-  group_by(num_rational, mean_desc, sd_desc, run_number) %>% 
-  summarize(
-    number_of_bubbles = sum(two_bubble_start)
-  ) %>% 
-  group_by(num_rational, mean_desc, sd_desc) %>% 
-  summarize(mean_bubbles = mean(number_of_bubbles)) %>% 
-  ggplot(aes(num_rational, mean_bubbles))+ 
-  geom_col()+
-  theme_bw()+
-  facet_grid(mean_desc ~ sd_desc, scales = "fixed")+
-  ggsave(file.path("R_output", "two_bubble_count.png"), width = 7, height = 4)
 
-
+# graphing average number of bubbles
+# in bubble teritorry
+# when bubble is defined as
+# a price reflecting more than 3 sigma ni-growth
 
 
 sim_results_with_bubs %>% 
@@ -242,7 +227,25 @@ sim_results_with_bubs %>%
 
 
 
+# looking for a suitable simulation 
+# to show in the paper
 
+sim_results_with_bubs %>% 
+  filter(
+    num_rational == 50 & 
+      sd_desc == "High SD" & 
+      mean_desc == "High Mean"
+  ) %>% 
+  group_by(run_number) %>% 
+  summarize(
+    three_bubbles = sum(three_bubble_start),
+    three_bubble_days = sum(bubble_three)
+  )
+
+
+
+
+# run 231 looks good, lets visualize it
 
 sim_results_with_bubs %>% 
   filter(
@@ -278,31 +281,9 @@ sim_results_with_bubs %>%
 
 
 
-sim_results_with_bubs %>% 
-  filter(
-    run_number == 233
-  ) %>% 
-  ggplot(aes(x = step, y = current_price))+
-  geom_line(aes(group = 1))+
-  geom_line(aes(step, two_sig_expected_price))+
-  geom_line(aes(step, two_sig_low_price))
 
 
 
-
-sim_results_with_bubs %>% 
-  filter(
-    num_rational == 50 & 
-      sd_desc == "High SD" & 
-      mean_desc == "High Mean"
-  ) %>% 
-  group_by(run_number) %>% 
-  summarize(
-    three_bubbles = sum(three_bubble_start), 
-    two_bubbles = sum(two_bubble_start), 
-    three_bubble_days = sum(bubble_three), 
-    two_bubble_days = sum(bubble_two)
-  )
 
 
 

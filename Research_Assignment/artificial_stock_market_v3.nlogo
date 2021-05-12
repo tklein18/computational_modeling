@@ -158,7 +158,15 @@ to update-price-target
 
 
 
-
+    ; irrational investors that are not influencers and that own shares
+    ; and that have not "timed out"
+    ; if the number of ticks is = to their memory, and the number of ticks is greater than their memory restart
+    ; will look back at a historical price
+    ; and if that historical price is greater than the current price
+    ; they will go to "timeout"
+    ; set their price-target to .01
+    ; set their return dat to 30 days from now
+    ; and color themselves black
     if investor-type = "irrational" and influencer = 0 and timeout = 0 and shares-owned > 0[
 
 
@@ -182,6 +190,7 @@ to update-price-target
 
     ; once the return tick has been reached, the turtle sets their price target
     ; equal to the closest influencer target
+    ; and color themselves orange
     if timeout = 1 [
 
       if return = ticks [
@@ -205,15 +214,16 @@ to update-price-target
 
 
 
-      ; irrational agents will update their price-target positively 1%
-      ; if they're share appreciated in value from the last day
-      ; they will update their price-target negatively 1% if they lost value from the last day
+    ; irrational agents will update their price-target negatively 1% if the share price went down
 
-          ; irrational investors also change their target price
-    ; based on the target price of their neighbors
+    ; if they're share appreciated in value from the last day
+    ; irrational agents will update their price-target positively 1%
+    ; and also
+    ; irrational investors also change their target price
+    ; based on the target price of the nearest influencer
     ; by moving their target price 10% between
-     ; their current target price and the average of their neighbors'
-      ; target prices
+    ; their current target price and the influencer's price target
+
 
 
       ifelse current-price > prev-price [
@@ -254,15 +264,7 @@ end
 ; if turtles have a price target that is above the current price
 ; they put in a buy order
 ; if they have price target below the current price, they put in a sell order
-; the price of the buy order (bid/ask) is the target price
-; each buy order is for a quantity of 1 share
-; turtles can submit multiple orders
-; the quantity of orders is calculated slightly differently for buy/sell orders
-; the quantity of a buy order is between 1 and
-; the total amount the turtle could purchase given its cash and the current price
-; the quantity scales up to the max amount as the current price approaches 50% of the target price
-; the quantity for sell orders is similar, its between 1 and the shares on hand
-; the quantity scales up to the shares on hand as the current price approaches 200% of the target price
+; each order is for a quantity of 1 share
 
 to place-orders
 
@@ -344,8 +346,7 @@ to settle-orders
   ; if there are more buy orders than sell orders
   ; it automatically executes all the sell orders
   ; randomly executes a number of buy orders = sell orders
-  ; sets the new market price = median of the top x buy orders, sorted by descending target price
-  ; where x is the difference between the sell orders and buy orders
+  ; adjusts the market price up by the difference between buy and sell orders / 500
 
   if ((sum map first sell-list) + (sum map first buy-list)) > 0 [
 
@@ -423,9 +424,9 @@ to settle-orders
     set prev-price current-price
 
    ; setting the current price equal to the current price plus a change
-    ; the change is equal to the ratio of the difference in buy and sell orders over the total number of outstanding shares * 5
+    ; the change is equal to the ratio of the difference in buy and sell orders over the total number of agents  * 5
     ; times the current price
-    ; so if agents wanted to sell 1000 more shares than were available to buy, the price would decrease 20%
+    ; so if all agents wanted to sell, the price would decrease 20%
 
     set current-price (current-price - (current-price * min (list (((- sum map first sell-list) + (- sum map first buy-list)) / 500) .2)))
 
@@ -478,6 +479,7 @@ end
 ; log prices command =====================================
 ; this logs the last 100 prices
 ; used to adjust the graph of prices
+; also used for irrational agents to compare to current prices
 
 to log-prices
 
@@ -706,7 +708,7 @@ When a new net income has been reported, "rational" traders forecast the net inc
 
 "Irrational" agents begin the simulation with a price-target that is a random number between 0.1 and 9.1. Every turn "irrational" agents update their prices in several ways. 
 
-The first way "irrational" agents can update their price is by looking at the price at some point in the past. Each "irrational" agent is assigned a memory, which is a number between 30 and 99. Once the number of turns has eclipsed their memory, and if the "irrational" agent owns at least one share, they will look back at the market price a number of turns ago equal to their memory (i.e. if their memory is 50, they will look at the market price 50 turns ago). If that price is greater than the current market price, they will set their price-target to .01, and will not update their price-target again for a number of turns equal to their memory. They will also turn themselves black. Once the agent begins updating their price-target again, they will set their target price to the target price of the nearest "influencer" and they will turn themselves orange. Also, they will wait to look in the past until they have begun updating their price-target for a number of turns equal to their memory. If the "irrational" agent skips this step (for reasons discussed), or if the current market price is greater than the historical price they looked at, they move on to the next step. 
+The first way "irrational" agents can update their price is by looking at the price at some point in the past. Each "irrational" agent is assigned a memory, which is a number between 30 and 99. Once the number of turns has eclipsed their memory, and if the "irrational" agent owns at least one share, they will look back at the market price a number of turns ago equal to their memory (i.e. if their memory is 50, they will look at the market price 50 turns ago). If that price is greater than the current market price, they will set their price-target to .01, and will not update their price-target again for 30 turns. They will also turn themselves black. Once the agent begins updating their price-target again, they will set their target price to the target price of the nearest "influencer" and they will turn themselves orange. Also, they will wait to look in the past until they have begun updating their price-target for a number of turns equal to their memory. If the "irrational" agent skips this step (for reasons discussed), or if the current market price is greater than the historical price they looked at, they move on to the next step. 
 
 The next way that "irrational" agents can update their price-target is by comparing the current-price to the previous day's price. If the current price is greater than the previous day's price, they will increase their price-target by 1% of the current-market price. If the current-price is less than the previous day's price, they will reduce their price-target by 1% of their current price-target. 
 
